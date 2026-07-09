@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAARTE Caps Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--espresso:#2C1810;--peony:#E8A0A8;--cream:#FAF6F0;--warm-white:#FFFDF9;--text-dark:#1A0F0A;--border:rgba(44,24,16,0.16);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Barlow',sans-serif;background:var(--cream);color:var(--text-dark);}
+  
+  .header{background:var(--espresso);color:var(--warm-white);padding:24px 20px;text-align:center;}
+  .header h1{font-family:'Cormorant Garamond',serif;font-size:32px;margin-bottom:4px;}
+  .header p{font-size:14px;opacity:0.8;}
+  
+  .wrap{max-width:1200px;margin:0 auto;padding:24px 20px;}
+  
+  .toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+  .toolbar input{flex:1;min-width:200px;padding:12px 14px;border:1px solid var(--border);border-radius:5px;font-size:16px;}
+  .toolbar button{padding:12px 18px;background:var(--espresso);color:var(--warm-white);border:none;border-radius:5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .toolbar button:hover{opacity:0.85;}
+  
+  table{width:100%;border-collapse:collapse;background:var(--warm-white);border:1px solid var(--border);border-radius:5px;overflow:hidden;}
+  th{background:var(--espresso);color:var(--warm-white);padding:14px;text-align:left;font-size:13px;font-weight:700;text-transform:uppercase;}
+  td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:15px;}
+  tr:hover td{background:var(--cream);}
+  .del-btn{background:#c0392b;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;}
+  .del-btn:hover{background:#a93226;}
+  
+  .empty{text-align:center;padding:40px;color:#666;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>MAARTE Caps Wish List Tracker</h1>
+  <p>For internal use only</p>
+</div>
+
+<div class="wrap">
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Search name, contact, address..." oninput="filter()">
+    <button onclick="refresh()">↻ Refresh</button>
+    <button onclick="download()">⬇ Download CSV</button>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Name</th>
+        <th>Contact</th>
+        <th>Address</th>
+        <th>Province</th>
+        <th>Qty</th>
+        <th>Delivery</th>
+        <th>Cap Price</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div id="empty" class="empty" style="display:none;">No entries yet.</div>
+</div>
+
+<script>
+let allData=[];
+
+function load(){
+  allData=JSON.parse(localStorage.getItem("maarte_wishlist")||"[]");
+  filter();
+}
+
+function filter(){
+  const search=(document.getElementById("search").value||"").toLowerCase();
+  const filtered=allData.filter(e=>(e.name+e.contact+e.address).toLowerCase().includes(search));
+  
+  const tbody=document.getElementById("tbody");
+  if(filtered.length===0){
+    tbody.innerHTML="";
+    document.getElementById("empty").style.display="block";
+  } else {
+    document.getElementById("empty").style.display="none";
+    tbody.innerHTML=filtered.map((e,i)=>`
+      <tr>
+        <td>${e.date}</td>
+        <td>${e.name}</td>
+        <td>${e.contact}</td>
+        <td>${e.address}</td>
+        <td>${e.province}</td>
+        <td>${e.qty}</td>
+        <td>${e.delivery}</td>
+        <td>₱${e.capPrice.toLocaleString()}</td>
+        <td><strong>₱${e.total.toLocaleString()}</strong></td>
+        <td><button class="del-btn" onclick="deleteEntry('${e.id}')">Delete</button></td>
+      </tr>
+    `).join("");
+  }
+}
+
+function refresh(){load();}
+
+function deleteEntry(id){
+  if(!confirm("Delete this entry?")) return;
+  allData=allData.filter(e=>e.id!==id);
+  localStorage.setItem("maarte_wishlist",JSON.stringify(allData));
+  filter();
+}
+
+function download(){
+  if(allData.length===0){alert("No data to download.");return;}
+  const headers=["Date","Name","Contact","Address","Province","Qty","Delivery","Cap Price","Total"];
+  const rows=allData.map(e=>[e.date,e.name,e.contact,e.address,e.province,e.qty,e.delivery,e.capPrice,e.total]);
+  let csv=headers.join(",")+"\n";
+  rows.forEach(r=>csv+=r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")+"\n");
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`MAARTE_Caps_Tracker_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+load();
+</script>
+</body>
+</html>
